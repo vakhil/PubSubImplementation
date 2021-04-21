@@ -6,10 +6,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 public class Server {
 
@@ -20,7 +17,7 @@ public class Server {
     }
 
     public void start(int port) throws IOException {
-        HashMap<String, List<String>> pubsubChannel = new HashMap<>();
+        HashMap<String, List<Socket>> pubsubChannel = new HashMap<>();
         serverSocket = new ServerSocket(port);
         while (true)
             new EchoClientHandler(serverSocket.accept(),pubsubChannel).start();
@@ -30,10 +27,10 @@ public class Server {
         private Socket clientSocket;
         private PrintWriter out;
         private BufferedReader in;
-        private HashMap<String, List<String>> pubsubChannels;
+        private HashMap<String, List<Socket>> pubsubChannels;
 
 
-        public EchoClientHandler(Socket socket, HashMap<String , List<String>> pubsubChannels) {
+        public EchoClientHandler(Socket socket, HashMap<String , List<Socket>> pubsubChannels) {
             this.clientSocket = socket;
             this.pubsubChannels = pubsubChannels;
         }
@@ -50,25 +47,42 @@ public class Server {
                 while ((inputLine = in.readLine()) != null) {
                     //Write code for handling subscribe and various other commands!!!
 
-                    if(inputLine.length() > Constants.SUBSRIBE_LENGTH){
-
-                        if(inputLine.substring(0,Constants.SUBSRIBE_LENGTH).toLowerCase(Locale.ROOT).equals(Constants.SUBSCRIBE)){
+                    if(inputLine.length() > Constants.SUBSRIBE_LENGTH &&
+                            inputLine.substring(0,Constants.SUBSRIBE_LENGTH).toLowerCase(Locale.ROOT).equals(Constants.SUBSCRIBE)){
                             //This means Subscribe. If the topic does not exits, create one, else
                             String channelName = inputLine.substring(Constants.SUBSRIBE_LENGTH+1,inputLine.length());
                             if(pubsubChannels.containsKey(channelName)){
-                                List<String> clientsList = pubsubChannels.get(channelName);
+                                List<Socket> clientsList = pubsubChannels.get(channelName);
                                 //How would you name this client ?
-                                if(clientsList.contains(clientName)){
+                                if(clientsList.contains(clientSocket)){
                                     continue;
                                 } else {
-                                    clientsList.add(clientName);
+                                    clientsList.add(clientSocket);
                                 }
                             }else {
-                                List<String> clientsList = Arrays.asList(clientName);
+                                List<Socket> clientsList = new ArrayList<>();
+                                clientsList.add(clientSocket);
                                 pubsubChannels.put(channelName,clientsList);
                             }
                             out.println("You have been subscribed to the channel \""+channelName+"\"");
-                            System.out.println("You have been subscribed to the channel \""+channelName+"\"");
+                            System.out.println(clientName + " have been subscribed to the channel \""+channelName+"\"");
+
+                    }
+
+
+
+                    else if(inputLine.length() > Constants.PUBLISH_LENGTH &&
+                            inputLine.substring(0,Constants.PUBLISH_LENGTH).toLowerCase(Locale.ROOT).equals(Constants.PUBLISH)) {
+                        String[] publishCommand = inputLine.split(" ");
+                        String channelName = publishCommand[1];
+                        String message = publishCommand[2];
+                        List<Socket> clientList = pubsubChannels.get(channelName);
+
+                        for (Socket client : clientList){
+                            PrintWriter clientOutput = new PrintWriter(client.getOutputStream(), true);
+                            clientOutput.println(message);
+                            out.println(clientSocket.getRemoteSocketAddress().toString()+" has been notified");
+                               //Send them all a message since both have sockets connected with them !!!!
                         }
 
                     }

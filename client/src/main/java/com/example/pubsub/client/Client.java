@@ -12,6 +12,73 @@ public class Client {
     private BufferedReader terminalReader;
     private PrintWriter terminalWriter;
 
+    private static class ReceiveMessageHandler extends Thread{
+        Socket socket;
+        private PrintWriter out;
+        private BufferedReader in;
+
+        public ReceiveMessageHandler(Socket socket) throws IOException {
+            this.socket = socket;
+            out = new PrintWriter(socket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+        }
+
+        @Override
+        public void run()  {
+            try {
+                String serverReply;
+                while ((serverReply = in.readLine()) != null      ) {
+                    System.out.println(serverReply);
+                }
+
+            } catch (IOException ex){
+
+            }
+
+            }
+    }
+
+    public static class TerminalMessageHandler extends Thread {
+        Socket socket;
+        private PrintWriter out;
+        private BufferedReader terminalReader;
+
+        public TerminalMessageHandler(Socket socket) throws IOException {
+            this.socket = socket;
+            out = new PrintWriter(socket.getOutputStream(), true);
+            terminalReader = new BufferedReader(new InputStreamReader(System.in));
+
+        }
+
+        public void stopConnection() throws IOException {
+            out.close();
+            socket.close();
+        }
+
+        @Override
+        public void run() {
+
+            String terminalInput;
+            //We are busy waiting for messages to come from
+
+            try {
+                while ((terminalInput = terminalReader.readLine()) != null      ) {
+                    //System.out.println(sendMessage(terminalInput));
+                    out.println(terminalInput);
+                    if(terminalInput.equals("bye")){
+                        stopConnection();
+                        break;
+                    }
+                }
+            } catch (Exception ex){
+
+            }
+
+
+        }
+    }
+
     public void startConnection(String ip, int port) throws IOException {
         clientSocket = new Socket(ip, port);
         out = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -21,28 +88,19 @@ public class Client {
         terminalReader = new BufferedReader(new InputStreamReader(System.in));
         terminalWriter = new PrintWriter(System.out);
 
-        String terminalInput;
-        while ((terminalInput = terminalReader.readLine()) != null) {
-             System.out.println(sendMessage(terminalInput));
-             if(terminalInput.equals("bye")){
-                 stopConnection();
-                 break;
-             }
-        }
+        ReceiveMessageHandler receiveMessageHandler = new ReceiveMessageHandler(clientSocket);
+        receiveMessageHandler.start();
 
-
-        terminalWriter.println("Method 2");
-        terminalWriter.flush();
-        terminalWriter.close();
-
+        TerminalMessageHandler terminalMessageHandler = new TerminalMessageHandler(clientSocket);
+        terminalMessageHandler.start();
 
 
     }
 
-    public String sendMessage(String msg) throws IOException {
+    public void sendMessage(String msg) throws IOException {
         out.println(msg);
-        String resp = in.readLine();
-        return resp;
+   //     String resp = in.readLine();
+     //   return resp;
     }
 
     public void stopConnection() throws IOException {
