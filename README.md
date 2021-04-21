@@ -1,5 +1,8 @@
 # PubSub Deep Dive
 
+This Github project is inspired by : https://making.pusher.com/redis-pubsub-under-the-hood/
+
+
 This project is a multi module with client and server. Firstly, go to the server module and start the server. Then, go the client and start multiple client instances.
 You can see the server terminal indicating the number of client instances connecting to it !!!
 With each client instance , we spawn a new thread on the server side. Each client instance will have 2 threads running, one for listening to the Server's messages and one
